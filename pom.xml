@@ -84,7 +84,7 @@
                 <artifactId>javafx-maven-plugin</artifactId>
                 <version>0.0.8</version>
                 <configuration>
-                    <mainClass>com.autoexcel.Launcher</mainClass>
+                    <mainClass>com.autoexcel.principal.Lancador</mainClass>
                 </configuration>
             </plugin>
         </plugins>

@@ -10,9 +10,9 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<VBox spacing="15.0" style="-fx-background-color: #f8f9fa; -fx-padding: 25;" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.autoexcel.MainController">
+<VBox spacing="15.0" style="-fx-background-color: #f8f9fa; -fx-padding: 25;" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.autoexcel.controladores.ControladorPrincipal">
     <children>
-        <Label text="Robô de Automação (Multi-Base)" textFill="#2c3e50">
+        <Label text="Robô de Automação RNC (Multi-Base)" textFill="#2c3e50">
             <font>
                 <Font name="System Bold" size="20.0" />
             </font>
@@ -26,8 +26,8 @@
         
         <HBox alignment="CENTER_LEFT" spacing="10.0">
             <children>
-                <TextField fx:id="filePathField" editable="false" prefHeight="35.0" prefWidth="420.0" promptText="Caminho do arquivo .xlsx..." style="-fx-background-radius: 5;" />
-                <Button fx:id="selectFileButton" mnemonicParsing="false" onAction="#handleSelectFile" prefHeight="35.0" style="-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 5; -fx-cursor: hand;" text="Procurar Arquivo" />
+                <TextField fx:id="campoCaminhoArquivo" editable="false" prefHeight="35.0" prefWidth="420.0" promptText="Caminho do arquivo .xlsx..." style="-fx-background-radius: 5;" />
+                <Button fx:id="botaoSelecionarArquivo" mnemonicParsing="false" onAction="#acaoSelecionarArquivo" prefHeight="35.0" style="-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 5; -fx-cursor: hand;" text="Procurar Arquivo" />
             </children>
         </HBox>
         
@@ -39,7 +39,7 @@
         
         <ScrollPane fitToWidth="true" prefHeight="250.0" style="-fx-background-color: transparent;">
             <content>
-                <FlowPane fx:id="cardsContainer" hgap="15.0" vgap="15.0" style="-fx-padding: 10;" />
+                <FlowPane fx:id="containerCards" hgap="15.0" vgap="15.0" style="-fx-padding: 10;" />
             </content>
         </ScrollPane>
 
@@ -49,7 +49,7 @@
             </font>
         </Label>
         
-        <TextArea fx:id="logArea" editable="false" prefHeight="200.0" prefWidth="550.0" style="-fx-control-inner-background: #282a36; -fx-text-fill: #50fa7b; -fx-font-family: 'Consolas', monospace; -fx-font-size: 13px;" wrapText="true" />
+        <TextArea fx:id="areaLogs" editable="false" prefHeight="200.0" prefWidth="550.0" style="-fx-control-inner-background: #282a36; -fx-text-fill: #50fa7b; -fx-font-family: 'Consolas', monospace; -fx-font-size: 13px;" wrapText="true" />
         
     </children>
 </VBox>
