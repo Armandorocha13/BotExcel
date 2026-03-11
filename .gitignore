@@ -1,0 +1,10 @@
+target/
+*.class
+.idea/
+.vscode/
+.settings/
+.project
+.classpath
+*.log
+acessos.csv
+# base.xlsx  # Removido do ignore pois o usuário pode querer a base junto
