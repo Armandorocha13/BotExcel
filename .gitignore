@@ -7,4 +7,5 @@ target/
 .classpath
 *.log
 acessos.csv
+output/
 # base.xlsx  # Removido do ignore pois o usuário pode querer a base junto
