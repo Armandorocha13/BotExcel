@@ -5,5 +5,5 @@ import java.util.List;
 import java.util.function.Consumer;
 
 public interface IAutomacao {
-    void executar(List<Equipamento> itens, String email, String senha, Consumer<String> logCallback);
+    void executar(List<Equipamento> itens, String email, String senha, Consumer<String> logCallback, Runnable onReadyToUnlock);
 }

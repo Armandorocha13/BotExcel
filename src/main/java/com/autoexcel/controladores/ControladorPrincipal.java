@@ -60,9 +60,28 @@ public class ControladorPrincipal {
             List<Equipamento> todosOsItens = leitorExcel.lerArquivo(arquivoExcelSelecionado.getAbsolutePath());
             dadosAgrupados = leitorExcel.agruparPorBase(todosOsItens);
 
-            // Carregar acessos CSV
-            String caminhoCsv = new File("acessos.csv").getAbsolutePath();
-            acessosDisponiveis = gerenciadorAcessos.carregarAcessos(caminhoCsv);
+            // Carregar acessos CSV (Tenta na raiz e na pasta do executável)
+            String[] caminhosPossiveis = {
+                "acessos.csv",
+                "../acessos.csv",
+                "../../acessos.csv",
+                new File(System.getProperty("user.dir"), "acessos.csv").getAbsolutePath()
+            };
+            
+            for (String caminho : caminhosPossiveis) {
+                File arq = new File(caminho);
+                if (arq.exists()) {
+                    acessosDisponiveis = gerenciadorAcessos.carregarAcessos(arq.getAbsolutePath());
+                    if (!acessosDisponiveis.isEmpty()) {
+                        escreverLog(">>> Arquivo de acessos carregado: " + arq.getName());
+                        break;
+                    }
+                }
+            }
+
+            if (acessosDisponiveis == null || acessosDisponiveis.isEmpty()) {
+                escreverLog(">>> AVISO: Nenhum acesso encontrado no arquivo acessos.csv!");
+            }
 
             escreverLog(">>> Bases encontradas: " + dadosAgrupados.size());
             criarInterfaceDeCards();
@@ -114,12 +133,12 @@ public class ControladorPrincipal {
 
         Thread threadTrabalho = new Thread(() -> {
             try {
-                servicoAutomacao.executar(itens, cred.getEmail(), cred.getSenha(), this::escreverLog);
-                
-                Platform.runLater(() -> {
-                    escreverLog(">>> Automação finalizada para a base " + base);
-                    bloquearInterface(false);
-                    exibirAlerta("Concluído", "A base " + base + " foi processada.");
+                servicoAutomacao.executar(itens, cred.getEmail(), cred.getSenha(), this::escreverLog, () -> {
+                    Platform.runLater(() -> {
+                        escreverLog(">>> Automação finalizada para a base " + base);
+                        bloquearInterface(false);
+                        exibirAlerta("Concluído", "A base " + base + " foi processada.");
+                    });
                 });
             } catch (Exception ex) {
                 Platform.runLater(() -> {

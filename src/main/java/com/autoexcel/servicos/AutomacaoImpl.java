@@ -4,27 +4,37 @@ import com.autoexcel.modelos.Equipamento;
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.AriaRole;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 
 public class AutomacaoImpl implements IAutomacao {
 
     @Override
-    public void executar(List<Equipamento> itens, String email, String senha, Consumer<String> logCallback) {
+    public void executar(List<Equipamento> itens, String email, String senha, Consumer<String> logCallback, Runnable onReadyToUnlock) {
         if (itens == null || itens.isEmpty()) {
             logCallback.accept("[AVISO] Lista vazia. Cancelando.");
+            if (onReadyToUnlock != null) onReadyToUnlock.run();
             return;
         }
 
         logCallback.accept("[SUCESSO] Iniciando automação para " + itens.size() + " registros.");
 
-        try (Playwright playwright = Playwright.create()) {
-            Browser browser = playwright.chromium().launch(new BrowserType.LaunchOptions().setHeadless(false).setSlowMo(100));
-            BrowserContext context = browser.newContext(new Browser.NewContextOptions().setViewportSize(1366, 768));
-            Page page = context.newPage();
+        try {
+            logCallback.accept("    > Inicializando motor Playwright (aguarde)...");
+            try (Playwright playwright = Playwright.create()) {
+                logCallback.accept("    > Lançando navegador Chromium...");
+                Browser browser = playwright.chromium().launch(new BrowserType.LaunchOptions()
+                    .setHeadless(false)
+                    .setArgs(Arrays.asList("--start-maximized"))
+                    .setSlowMo(100));
+                
+                logCallback.accept("    > Criando contexto de navegação...");
+                BrowserContext context = browser.newContext(new Browser.NewContextOptions().setViewportSize(null));
+                Page page = context.newPage();
 
-            logCallback.accept("    > Acessando portal...");
-            page.navigate("https://rnc.tcia.com.br/");
+                logCallback.accept("    > Acessando portal: https://rnc.tcia.com.br/");
+                page.navigate("https://rnc.tcia.com.br/");
 
             // Login
             if (page.url().contains("/login") || page.locator("#email").isVisible()) {
@@ -80,6 +90,7 @@ public class AutomacaoImpl implements IAutomacao {
 
                     // Sintoma
                     page.getByText("Selecione", new Page.GetByTextOptions().setExact(true)).first().click();
+                    Thread.sleep(1000);
                     page.getByRole(AriaRole.OPTION, new Page.GetByRoleOptions().setName("CONFIGURAÇÃO - NÃO HABILITA")).first().click();
 
                     // Adicionar
@@ -92,11 +103,26 @@ public class AutomacaoImpl implements IAutomacao {
                 }
             }
 
-            logCallback.accept("\n[INFO] Fim das inserções. Revise e salve manualmente.");
+            logCallback.accept("\n[INFO] Fim das inserções. Rolando para o final da página...");
+            page.evaluate("window.scrollTo(0, document.body.scrollHeight)");
+            logCallback.accept("[SUCESSO] Página rolada. Por favor, revise e salve manualmente.");
+            
+            // LIBERA A UI AQUI
+            if (onReadyToUnlock != null) onReadyToUnlock.run();
+            
             while (!page.isClosed()) { Thread.sleep(1000); }
-
+        }
+    } catch (com.microsoft.playwright.PlaywrightException e) {
+            logCallback.accept("[ERRO] Erro no Playwright: " + e.getMessage());
+            if (e.getMessage().contains("Executable doesn't exist")) {
+                logCallback.accept(">>> AVISO: Os navegadores nao estao instalados.");
+                logCallback.accept(">>> Por favor, feche o programa e execute o arquivo 'instalar_navegadores.bat'.");
+            }
         } catch (Exception e) {
             logCallback.accept("[ERRO FATAL] Lógica de automação parou: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            if (onReadyToUnlock != null) onReadyToUnlock.run();
         }
     }
 }

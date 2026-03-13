@@ -8,4 +8,5 @@ target/
 *.log
 acessos.csv
 output/
+dependency-reduced-pom.xml
 # base.xlsx  # Removido do ignore pois o usuário pode querer a base junto
