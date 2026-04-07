@@ -49,59 +49,82 @@ public class AutomacaoImpl implements IAutomacao {
             page.navigate("https://rnc.tcia.com.br/rnc/nova");
             page.waitForSelector("text=Registro de Falhas", new Page.WaitForSelectorOptions().setTimeout(30000));
 
-            for (int i = 0; i < itens.size(); i++) {
-                Equipamento eq = itens.get(i);
-                String mac = eq.getEnderecavelPrincipal();
+                for (int i = 0; i < itens.size(); i++) {
+                    Equipamento eq = itens.get(i);
+                    String mac = eq.getEnderecavelPrincipal();
 
-                if (mac == null || mac.trim().isEmpty()) continue;
+                    if (mac == null || mac.trim().isEmpty()) continue;
 
-                logCallback.accept("\n-------------------------------------------------------------");
-                logCallback.accept(String.format("[PROCESSO] %d/%d - Inserindo Equipamento...", i + 1, itens.size()));
+                    logCallback.accept("\n-------------------------------------------------------------");
+                    logCallback.accept(String.format("[PROCESSO] %d/%d - Inserindo Equipamento...", i + 1, itens.size()));
 
-                try {
-                    // Abrir Modal
-                    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Adicionar Novo Item")).click();
-                    
-                    // Preencher MAC e Consultar
-                    logCallback.accept("    > Consultando MAC: " + mac);
-                    page.locator("#ca-id").fill(mac);
-                    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Consultar Item")).click();
+                    try {
+                        // Abrir Modal e esperar ele estar visível
+                        page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Adicionar Novo Item")).click();
+                        page.waitForSelector("#ca-id", new Page.WaitForSelectorOptions().setState(com.microsoft.playwright.options.WaitForSelectorState.VISIBLE).setTimeout(10000));
+                        
+                        // Preencher MAC e Consultar
+                        logCallback.accept("    > Consultando MAC: " + mac);
+                        page.locator("#ca-id").fill(mac);
+                        page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Consultar Item")).click();
 
-                    // Espera Resposta
-                    boolean reconhecido = false;
-                    for (int s = 0; s < 8; s++) {
-                        if (page.locator("text=Código informado não localizado").isVisible()) break;
-                        String valSap = page.locator("#codSap").inputValue();
-                        if (valSap != null && !valSap.trim().isEmpty()) {
-                            reconhecido = true;
-                            break;
+                        // Espera Resposta de forma inteligente (até 10 segundos)
+                        boolean reconhecido = false;
+                        try {
+                            // Espera ou a mensagem de erro ou o preenchimento automático de um campo chave (ex: codSap)
+                            page.waitForCondition(() -> {
+                                boolean erro = page.locator("text=Código informado não localizado").isVisible();
+                                String valSap = page.locator("#codSap").inputValue();
+                                return erro || (valSap != null && !valSap.trim().isEmpty());
+                            }, new Page.WaitForConditionOptions().setTimeout(10000));
+
+                            if (!page.locator("text=Código informado não localizado").isVisible()) {
+                                reconhecido = true;
+                            }
+                        } catch (Exception e) {
+                            logCallback.accept("    [AVISO] Timeout na consulta. Tentando preenchimento manual.");
                         }
-                        Thread.sleep(1000);
+
+                        if (!reconhecido) {
+                            logCallback.accept("    [AVISO] MAC não localizado. Preenchendo dados do Excel...");
+                            page.locator("#codSap").fill(eq.getCodigoMaterialSap());
+                            page.locator("#modelo").fill(eq.getModelo());
+                            page.locator("#tecnologia").fill(eq.getFamilia());
+                        } else {
+                            logCallback.accept("    > Reconhecido automaticamente.");
+                        }
+
+                        // Sintoma - Clique mais preciso
+                        // Espera o seletor de sintoma estar disponível
+                        Locator sintomaSelect = page.locator(".v-select").first(); // Ajuste baseado em frameworks comuns como Vue/Vuetify que o site parece usar
+                        if (!sintomaSelect.isVisible()) {
+                           sintomaSelect = page.getByText("Selecione", new Page.GetByTextOptions().setExact(true)).first();
+                        }
+                        
+                        sintomaSelect.click();
+                        
+                        // Espera a opção aparecer e clica
+                        page.getByRole(AriaRole.OPTION, new Page.GetByRoleOptions().setName("CONFIGURAÇÃO - NÃO HABILITA")).first().click();
+
+                        // Adicionar e esperar o modal fechar
+                        page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Adicionar")).click();
+                        
+                        // Garante que o modal fechou antes de seguir para o próximo (evita sobreposição)
+                        page.waitForSelector("#ca-id", new Page.WaitForSelectorOptions().setState(com.microsoft.playwright.options.WaitForSelectorState.HIDDEN).setTimeout(5000));
+                        
+                        logCallback.accept("[SUCESSO] Item adicionado!");
+
+                    } catch (Exception ex) {
+                        logCallback.accept("[ERRO] Falha no item " + mac + ": " + ex.getMessage());
+                        // Tenta fechar o modal se ele ainda estiver aberto para não travar o próximo item
+                        try { 
+                            if (page.locator("#ca-id").isVisible()) {
+                                page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Cancelar")).click(); 
+                                page.waitForSelector("#ca-id", new Page.WaitForSelectorOptions().setState(com.microsoft.playwright.options.WaitForSelectorState.HIDDEN));
+                            }
+                        } catch (Exception ignored) {}
                     }
-
-                    if (!reconhecido) {
-                        logCallback.accept("    [AVISO] MAC não localizado. Preenchendo dados do Excel...");
-                        page.locator("#codSap").fill(eq.getCodigoMaterialSap());
-                        page.locator("#modelo").fill(eq.getModelo());
-                        page.locator("#tecnologia").fill(eq.getFamilia());
-                    } else {
-                        logCallback.accept("    > Reconhecido automaticamente.");
-                    }
-
-                    // Sintoma
-                    page.getByText("Selecione", new Page.GetByTextOptions().setExact(true)).first().click();
-                    Thread.sleep(1000);
-                    page.getByRole(AriaRole.OPTION, new Page.GetByRoleOptions().setName("CONFIGURAÇÃO - NÃO HABILITA")).first().click();
-
-                    // Adicionar
-                    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Adicionar")).click();
-                    logCallback.accept("[SUCESSO] Item adicionado!");
-
-                } catch (Exception ex) {
-                    logCallback.accept("[ERRO] Falha no item " + mac + ": " + ex.getMessage());
-                    try { page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Cancelar")).click(); } catch (Exception ignored) {}
                 }
-            }
 
             logCallback.accept("\n[INFO] Fim das inserções. Rolando para o final da página...");
             page.evaluate("window.scrollTo(0, document.body.scrollHeight)");
